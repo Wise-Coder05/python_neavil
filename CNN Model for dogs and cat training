@@ -1,0 +1,101 @@
+import keras
+from keras.models import Sequential
+from keras.utils import np_utils
+from keras.preprocessing.image import ImageDataGenerator     #Image data augumentation
+from keras.layers import Dense,Activation,Dropout, Flatten, BatchNormalization
+from keras.layers import Conv2D, MaxPooling2D
+from keras.datasets import cifar10
+from keras import regularizers
+from keras.callbacks import LearningRateScheduler
+import numpy as np
+
+def lr_schedule(epoch):
+    lrate=0.001
+    if epoch > 75:
+        lrate=0.0005
+    if epoch > 100:
+        lrate=0.0003
+    return lrate
+
+(xtr,ytr),(xts,yts) = cifar10.load_data()
+
+(xtrain,ytrain),(xtest,ytest) = cifar10.load_data()
+
+#Normalization of input data
+mean = np.mean(xtrain)
+std = np.std(xtrain)
+xtrain = (xtrain - mean)/std
+xtest = (xtest-mean)/std
+
+#Categorazation of o/p value
+ytrain = np_utils.to_categorical(ytrain)
+ytest = np_utils.to_categorical(ytest)
+
+xtrain.shape[1:]
+
+#Build CNN Model
+wd = 0.0001
+model = Sequential()
+model.add(Conv2D(32, (3,3), padding='same', kernel_regularizer = regularizers.l2(wd), input_shape=xtrain.shape[1:]))
+model.add(Activation('relu'))
+model.add(BatchNormalization())
+model.add(Conv2D(32, (3,3), padding='same', kernel_regularizer = regularizers.l2(wd)))
+model.add(Activation('relu'))
+model.add(BatchNormalization())
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Dropout(0.2))
+
+model.add(Conv2D(64, (3,3), padding='same', kernel_regularizer = regularizers.l2(wd)))
+model.add(Activation('relu'))
+model.add(BatchNormalization())
+model.add(Conv2D(64, (3,3), padding='same', kernel_regularizer = regularizers.l2(wd)))
+model.add(Activation('relu'))
+model.add(BatchNormalization())
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Dropout(0.3))
+
+model.add(Conv2D(128, (3,3), padding='same', kernel_regularizer = regularizers.l2(wd)))
+model.add(Activation('relu'))
+model.add(BatchNormalization())
+model.add(Conv2D(128, (3,3), padding='same', kernel_regularizer = regularizers.l2(wd)))
+model.add(Activation('relu'))
+model.add(BatchNormalization())
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Dropout(0.4))
+
+model.add(Flatten())
+model.add(Dense(10,activation='softmax'))
+
+model.summary()
+
+opt_rms = keras.optimizers.rmsprop(lr=0.001, decay=1e-6)
+model.compile(loss='categorical_crossentropy',optimizer=opt_rms,metrics=['accuracy'])
+model.fit(xtrain,ytrain,epochs=5,
+          validation_data=(xtest,ytest),callbacks=[LearningRateScheduler(lr_schedule)])
+
+model_json = model.to_json()
+
+a = open('bipul.txt','w')
+a.write('Hello we are learning Python')
+a.close()
+
+b = open('bipul.txt','r')
+print(b.read())
+
+model_json = model.to_json()
+with open('model.json', 'w') as json_file:
+    json_file.write(model_json)
+model.save_weights('model.h5') 
+
+import matplotlib.pyplot as plt
+plt.imshow(xtest[345])
+plt.show()
+
+np.argmax(model.predict(xtest[345].reshape(1,32,32,3)))
+
+np.argmax(ytest[345])
+
+import matplotlib.pyplot as plt
+plt.imshow(xts[345])
+plt.show()
+
